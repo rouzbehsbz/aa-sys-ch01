@@ -19,15 +19,19 @@ impl Cell {
     }
 }
 
-pub struct World<const N: usize> {
+pub struct World {
     size: usize,
-    cells: [Mutex<Cell>; N]
+    cells: Vec<Mutex<Cell>>
 }
 
-impl <const N: usize> World<N> {
-    pub fn new() -> Self {
-        let cells: [Mutex<Cell>; N] = array::from_fn(|_| Mutex::new(Cell::new()));
-        let size = (N as f32).sqrt() as usize;
+impl World {
+    pub fn new(size: usize) -> Self {
+        let cells_count = size*size;
+        let mut cells = Vec::with_capacity(cells_count);
+
+        for _ in 0..cells_count {
+            cells.push(Mutex::new(Cell::new()));
+        }
 
         Self {
             size,
