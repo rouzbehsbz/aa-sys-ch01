@@ -1,4 +1,8 @@
-use std::{array, collections::HashSet, sync::{Mutex, MutexGuard}};
+use std::{
+    array,
+    collections::HashSet,
+    sync::{mpsc::Receiver, Arc, Mutex, MutexGuard},
+};
 
 use rand::Rng;
 
@@ -7,26 +11,27 @@ pub type Note = (usize, usize);
 
 pub struct Cell {
     is_broken: bool,
-    notes: Vec<Note>
+    notes: Vec<Note>,
 }
 
 impl Cell {
     pub fn new() -> Self {
         Self {
             is_broken: false,
-            notes: vec![]
+            notes: vec![],
         }
     }
 }
 
 pub struct World {
     size: usize,
-    cells: Vec<Mutex<Cell>>
+    cells: Vec<Mutex<Cell>>,
+    ready_workers: Mutex<usize>,
 }
 
 impl World {
     pub fn new(size: usize) -> Self {
-        let cells_count = size*size;
+        let cells_count = size * size;
         let mut cells = Vec::with_capacity(cells_count);
 
         for _ in 0..cells_count {
@@ -35,7 +40,8 @@ impl World {
 
         Self {
             size,
-            cells
+            cells,
+            ready_workers: Mutex::new(0),
         }
     }
 
@@ -47,11 +53,33 @@ impl World {
         self.cells[index].lock().unwrap()
     }
 
-    pub fn set_cell_broken_status(&self, cord: Coordinates, is_broken: bool) {
+    pub fn repair_cell(&self, worker_id: usize, worker_repaired_cells: usize, cord: Coordinates) -> usize {
         let index = self.get_cell_index(cord);
         let mut cell = self.get_cell_mut(index);
+        let mut new_repaired_cells = worker_repaired_cells;
 
-        cell.is_broken = is_broken
+        if cell.is_broken {
+            cell.is_broken = false;
+            new_repaired_cells += 1;
+        }
+
+        cell.notes.push((worker_id, new_repaired_cells));
+
+        new_repaired_cells
+    }
+
+    pub fn get_repaired_cells_from_notes(&self, cord: Coordinates) -> usize {
+        let index = self.get_cell_index(cord);
+        let cell = self.get_cell_mut(index);
+        let mut all_repaired_cells = 0;
+
+        for (_, cells_repaired) in &cell.notes {
+            if *cells_repaired > all_repaired_cells {
+                all_repaired_cells = *cells_repaired;
+            }
+        }
+
+        all_repaired_cells
     }
 
     pub fn generate_broken_cells(&self, count: usize) {
@@ -66,7 +94,10 @@ impl World {
         }
 
         for cord in broken_cells {
-            self.set_cell_broken_status(cord, true)
+            let index = self.get_cell_index(cord);
+            let mut cell = self.get_cell_mut(index);
+    
+            cell.is_broken = true
         }
     }
 }
