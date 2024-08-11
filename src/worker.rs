@@ -1,4 +1,4 @@
-use std::{sync::Arc, thread};
+use std::sync::Arc;
 
 use rand::Rng;
 
@@ -99,7 +99,7 @@ impl Worker {
         loop {
             match self.status {
                 WorkerStatus::Wait => {
-                    // self.world.increase_ready_workers();
+                    self.generate_status();
                 }
                 WorkerStatus::Move => {
                     self.move_next_position();
@@ -121,8 +121,6 @@ impl Worker {
 
             if is_done {
                 break;
-            } else {
-                self.generate_status()
             }
         }
     }

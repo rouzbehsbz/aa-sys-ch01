@@ -80,25 +80,6 @@ impl World {
         new_repaired_cells
     }
 
-    pub fn increase_ready_workers(&self) {
-        let mut workers_state_guard = self.workers_state.lock().unwrap();
-
-        workers_state_guard.0 += 1;
-
-        if workers_state_guard.0 == self.workers_count {
-            workers_state_guard.1 = true;
-
-            self.worker_notifier.notify_all();
-
-            workers_state_guard.0 = 0;
-            workers_state_guard.1 = false;
-        } else {
-            while !workers_state_guard.1 {
-                workers_state_guard = self.worker_notifier.wait(workers_state_guard).unwrap();
-            }
-        }
-    }
-
     pub fn get_repaired_cells_from_notes(&self, cord: Coordinates) -> usize {
         let index = self.get_cell_index(cord);
         let cell = self.get_cell_mut(index);
