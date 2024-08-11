@@ -28,7 +28,7 @@ impl Worker {
         id: usize,
         world: Arc<World>,
         cells_need_to_repair: usize,
-        world_size: usize
+        world_size: usize,
     ) -> Self {
         let mut rng = rand::thread_rng();
         let start_position_row = rng.gen_range(0..world_size);
@@ -43,10 +43,6 @@ impl Worker {
             status: WorkerStatus::default(),
             position: (start_position_row, start_position_col),
         }
-    }
-
-    pub fn get_status(&self) -> WorkerStatus {
-        self.status
     }
 
     pub fn generate_status(&mut self) {
@@ -64,38 +60,32 @@ impl Worker {
     pub fn move_next_position(&mut self) {
         let mut rng = rand::thread_rng();
 
-        let mut is_vertical = rng.gen_bool(0.5);
-        let mut is_forward = rng.gen_bool(0.5);
-
-        if self.position.0 == 0 || self.position.0 == self.world_size - 1 {
-            is_vertical = true
-        }
-        else if self.position.1 == 0 || self.position.1 == self.world_size - 1 {
-            is_vertical = false
-        }
-
-        if self.position.0 == 0 || self.position.1 == 0 {
-            is_forward = true
-        }
-        else if self.position.0 == self.world_size - 1 || self.position.0 == self.world_size - 1 {
-            is_forward = false
-        }
+        let is_vertical = rng.gen_bool(0.5);
+        let is_forward = rng.gen_bool(0.5);
 
         match is_vertical {
             true => match is_forward {
                 true => {
-                    self.position.1 += 1;
+                    if self.position.1 < self.world_size - 1 {
+                        self.position.1 += 1;
+                    }
                 }
                 false => {
-                    self.position.1 -= 1;
+                    if self.position.1 > 0 {
+                        self.position.1 -= 1;
+                    }
                 }
             },
             false => match is_forward {
                 true => {
-                    self.position.0 += 1;
+                    if self.position.0 < self.world_size - 1 {
+                        self.position.0 += 1;
+                    }
                 }
                 false => {
-                    self.position.0 -= 1;
+                    if self.position.0 > 0 {
+                        self.position.0 -= 1;
+                    }
                 }
             },
         }
@@ -109,14 +99,16 @@ impl Worker {
         loop {
             match self.status {
                 WorkerStatus::Wait => {
-                    
+                    // self.world.increase_ready_workers();
                 }
                 WorkerStatus::Move => {
                     self.move_next_position();
                     self.status = WorkerStatus::Wait;
                 }
                 WorkerStatus::Repair => {
-                    self.repaired_cells = self.world.repair_cell(self.id, self.repaired_cells, self.position);
+                    self.repaired_cells =
+                        self.world
+                            .repair_cell(self.id, self.repaired_cells, self.position);
                     self.status = WorkerStatus::Wait;
                 }
                 WorkerStatus::Idle => {
@@ -129,11 +121,16 @@ impl Worker {
 
             if is_done {
                 break;
+            } else {
+                self.generate_status()
             }
         }
     }
 
     pub fn yell_progress(&self) {
-        println!("Worker with ID of {}, repaired {} cells.", self.id, self.repaired_cells)
+        println!(
+            "Worker with ID of {}, repaired {} cells.",
+            self.id, self.repaired_cells
+        )
     }
 }
