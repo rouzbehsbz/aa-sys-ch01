@@ -16,6 +16,7 @@ pub enum WorkerStatus {
 pub struct Worker {
     id: usize,
     world: Arc<World>,
+    world_size: usize,
     cells_need_to_repair: usize,
     repaired_cells: usize,
     status: WorkerStatus,
@@ -27,15 +28,20 @@ impl Worker {
         id: usize,
         world: Arc<World>,
         cells_need_to_repair: usize,
-        position: Coordinates,
+        world_size: usize
     ) -> Self {
+        let mut rng = rand::thread_rng();
+        let start_position_row = rng.gen_range(0..world_size);
+        let start_position_col = rng.gen_range(0..world_size);
+
         Self {
             id,
             world,
+            world_size,
             cells_need_to_repair,
             repaired_cells: 0,
             status: WorkerStatus::default(),
-            position,
+            position: (start_position_row, start_position_col),
         }
     }
 
@@ -58,8 +64,22 @@ impl Worker {
     pub fn move_next_position(&mut self) {
         let mut rng = rand::thread_rng();
 
-        let is_vertical = rng.gen_bool(0.5);
-        let is_forward = rng.gen_bool(0.5);
+        let mut is_vertical = rng.gen_bool(0.5);
+        let mut is_forward = rng.gen_bool(0.5);
+
+        if self.position.0 == 0 || self.position.0 == self.world_size - 1 {
+            is_vertical = true
+        }
+        else if self.position.1 == 0 || self.position.1 == self.world_size - 1 {
+            is_vertical = false
+        }
+
+        if self.position.0 == 0 || self.position.1 == 0 {
+            is_forward = true
+        }
+        else if self.position.0 == self.world_size - 1 || self.position.0 == self.world_size - 1 {
+            is_forward = false
+        }
 
         match is_vertical {
             true => match is_forward {
@@ -85,10 +105,12 @@ impl Worker {
         self.cells_need_to_repair == all_repaired_cells
     }
 
-    pub fn process(&mut self) {
+    pub fn process_until_work_is_done(&mut self) {
         loop {
             match self.status {
-                WorkerStatus::Wait => {}
+                WorkerStatus::Wait => {
+                    
+                }
                 WorkerStatus::Move => {
                     self.move_next_position();
                     self.status = WorkerStatus::Wait;
@@ -109,5 +131,9 @@ impl Worker {
                 break;
             }
         }
+    }
+
+    pub fn yell_progress(&self) {
+        println!("Worker with ID of {}, repaired {} cells.", self.id, self.repaired_cells)
     }
 }
